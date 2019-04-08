@@ -276,7 +276,7 @@ class API():
 	def bulkAction(self, action, bulkdata, multithread=False):
 	## bulkdata should be a list composed of just string values or tuples
 	## if it is tuples, the format should be (term, code, code_system)
-	## e.g. In the case of NHPID data, the format is [('ingredient term', 'nid', 'NHPID'), ( , , ), ..]
+	## e.g. format [('term_1', 'Code_ID1', 'Code_System'), ('term_2', 'Code_ID2', 'Code_System'), ..]
 		global counter
 		counter = 0
 		
@@ -296,22 +296,7 @@ class API():
 			if multithread is True:
 				print("Executing {} jobs in multithread".format(len(bulkdata)))
 				self.logger.log("Msg", "Executing {} jobs in multithread".format(len(bulkdata)))
-				# async def main(jobs):
-					# global counter
-					# loop = asyncio.get_event_loop()
-					# futures = [
-						# loop.run_in_executor(
-							# None,
-							# operation,
-							# i
-							# )
-						# for i in jobs
-					# ]
-					# for response in await asyncio.gather(*futures):
-						# counter+=1
-						# print("Completed {} of {} jobs".format(counter, len(jobs)))
-				# loop = asyncio.get_event_loop()
-				# loop.run_until_complete(main(bulkdata))
+
 				with multiprocessing.Pool(25) as p:
 					p.map(operation, bulkdata)
 				print("Completed {} jobs".format(len(bulkdata)))
