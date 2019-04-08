@@ -16,7 +16,7 @@ class pyGinasLogger():
 			self.logfile = 'log/{}.log'.format(logfile)
 			# self.logfile_uploads = 'log/{}_uploads.log'.format(logfile)
 		except IOError as exception:
-			raise IOError('%s: %s' % (path, exception.strerror))
+			raise IOError('{}: {}'.format(path, exception.strerror))
 		return None
 	
 	def log(self, type, message):
