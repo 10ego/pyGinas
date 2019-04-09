@@ -17,7 +17,6 @@ class pyGinasLogger():
 			# self.logfile_uploads = 'log/{}_uploads.log'.format(logfile)
 		except IOError as exception:
 			raise IOError("{}: {}".format(path, exception.strerror))
-		return None
 	
 	def log(self, type, message):
 		timestamp = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S (%z)")
@@ -44,7 +43,6 @@ class API():
 		self.logger.log("Msg", "Schema set to '{}'".format(self.SCHEMA))
 	
 	def _buildCode(self, code_id, code_system, url = None, ref=[], self_ref="", type = "PRIMARY",  deprecated = False, access=[]):
-		
 		code = {}
 		code['_self'] = self_ref  # Self link to reference the code
 		code['code'] = str(code_id)
@@ -142,7 +140,6 @@ class API():
 			self.logger.log("Error", "{} Error. Search call on '{}' failed. {}".format(type(e), term, e.args))
 			print("{} Error. Search call on '{}' failed. {}".format(type(e), term, e.args))
 			return None
-		
 	
 	def getFull(self, uuid):
 		self._validateSchema()
@@ -160,7 +157,6 @@ class API():
 			self.logger.log("Error", "{} Error. Search call failed for '{}' failed. See args - ".format(type(e), term, e.args))
 			print("{} Error. Search call failed for '{}' failed. See args - ".format(type(e), term, e.args))
 			return None
-		
 	
 	def validate(self, data):
 		self._validateSchema()
@@ -183,7 +179,6 @@ class API():
 		except Exception as e:
 			self.logger.log("Error", "POST request for {} at '{}' failed. {} ERROR on args {}.".format(data['_name'], url, type(e), e.args))
 			return None
-		
 
 	def upload(self, data):
 		self._validateSchema()
@@ -199,23 +194,6 @@ class API():
 				print("Error code {}! Upload call for '{}' failed.".format(r.status_code, data['_name']))
 		except Exception as e:
 			self.logger.log("Error", "POST request for {} at '{}' failed. {} ERROR on args {}.".format(data['_name'], url, type(e), e.args))		
-
-	# def update(self, data): # custom_code should be dictionary output of self._buildCode()
-		# self._validateSchema()
-		# if self.USERNAME is None or self.PASSWORD is None:
-			# self.authenticate()
-		
-		# url = self.MY_URL + "/{}".format(self.SCHEMA)
-		# r = requests.put(url = url, headers = self.HEADER, data = json.dumps(data))
-		# if 200 <= r.status_code < 300:
-			# self.logger.log("Msg", "Update success ({})!".format(data['_name']))
-			# print("Update success ({})!".format(data['_name']))
-		# else:
-			# try:
-				# self.logger.log("Error", "Error code {}! Update call for {} failed. See details - {}".format(r.status_code, data['_name'], r.json()))
-				# print("Error code {}! Update call to {} failed.".format(r.status_code, url))
-			# except Exception as e:
-				# self.logger.log("Error", "Update call to {} failed. {} ERROR on args {}".format(data['_name'], type(e), e.args))
 
 	def approve(self, uuid):
 		self._validateAuth()
