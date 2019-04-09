@@ -1,4 +1,4 @@
-# version 0.7
+# version 0.71
 import requests
 import multiprocessing
 from datetime import datetime
@@ -13,17 +13,17 @@ class pyGinasLogger():
 				pass
 			else:
 				os.makedirs('log')
-			self.logfile = 'log/{}.log'.format(logfile)
+			self.logfile = "log/{}.log".format(logfile)
 			# self.logfile_uploads = 'log/{}_uploads.log'.format(logfile)
 		except IOError as exception:
-			raise IOError('{}: {}'.format(path, exception.strerror))
+			raise IOError("{}: {}".format(path, exception.strerror))
 		return None
 	
 	def log(self, type, message):
 		timestamp = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S (%z)")
 		with open(self.logfile, 'a+') as log:
-			log.write('[{}] [{}] {}'.format(timestamp, type, message))
-			log.write('\n\n')
+			log.write("[{}] [{}] {}".format(timestamp, type, message))
+			log.write("\n\n")
 			
 class API():
 	def __init__(self, schema = None):
@@ -73,7 +73,6 @@ class API():
 			raise ValueError("Schema is set to None.")
 			self.logger.log("Error", "No schemas set.")
 		elif self.SCHEMA in ['references', 'edits', 'substances', 'structures', 'scheduledjobs', 'backups', 'xrefs', 'codes', 'values', 'vocabularies', 'keywords', 'names', 'payload', 'jobs']:
-			self.logger.log("Msg", "Schema set to {}.".format(self.SCHEMA))
 			pass
 		else:
 			raise ValueError('{} is not a supported schema'.format(self.SCHEMA))
@@ -116,8 +115,8 @@ class API():
 		
 	def search(self, term):
 		self._validateSchema()
-		if type(term) is str:
-			query_url = self.BASE_URL + "/{}/search?q={}".format(self.SCHEMA, term)
+		query_url = self.BASE_URL + "/{}/search?q={}".format(self.SCHEMA, str(term))
+		try:
 			r = requests.get(query_url)
 			if 200 <= r.status_code < 300:
 				result = r.json()['content']
@@ -125,6 +124,7 @@ class API():
 				if result == []:
 					print("No results found for '{}'.".format(term))
 					self.logger.log("Warning", "No results found for '{}'.".format(term))
+					return None
 				else:
 					name = result[0]['_name']
 					if name.lower() != term.lower():
@@ -137,22 +137,30 @@ class API():
 			else:
 				self.logger.log("Error", "Error code {}! Search call failed for '{}'.".format(r.status_code, term))
 				print("Error", "Error code {}! Search call failed for '{}'.".format(r.status_code, term))
-		else:
-			self.logger.log("Error", "Search call on '{}' failed. ERROR: '{}' is an unacceptable data type.".format(term, type(term)))
-			print("Error", "Search call on '{}' failed. ERROR: '{}' is an unacceptable data type.".format(term, type(term)))
-		return None
+				return None
+		except Exception as e:
+			self.logger.log("Error", "{} Error. Search call on '{}' failed. {}".format(type(e), term, e.args))
+			print("{} Error. Search call on '{}' failed. {}".format(type(e), term, e.args))
+			return None
+		
 	
 	def getFull(self, uuid):
 		self._validateSchema()
 		url = self.BASE_URL + "/{}({})?view=full".format(self.SCHEMA, uuid)
 		r = requests.get(url)
-		if 200 <= r.status_code < 300:
-			return r.json()
-			self.logger.log("Msg", "Retrieved full data from uuid: '{}'".format(uuid))
-		else:
-			self.logger.log("Error", "Error code {}! Search call failed for '{}' failed.".format(r.status_code, term))
-			print("Error", "Error code{}! Search call to '{}' failed.".format(r.status_code, url))
-		return None
+		try:
+			if 200 <= r.status_code < 300:
+				self.logger.log("Msg", "Retrieved full data from uuid: '{}'".format(uuid))
+				return r.json()
+			else:
+				self.logger.log("Error", "Error code {}! Search call failed for '{}' failed.".format(r.status_code, term))
+				print("Error code{}! Search call to '{}' failed.".format(r.status_code, url))
+				return None
+		except Exception as e:
+			self.logger.log("Error", "{} Error. Search call failed for '{}' failed. See args - ".format(type(e), term, e.args))
+			print("{} Error. Search call failed for '{}' failed. See args - ".format(type(e), term, e.args))
+			return None
+		
 	
 	def validate(self, data):
 		self._validateSchema()
@@ -160,32 +168,37 @@ class API():
 		url = self.MY_URL + "/{}/@validate".format(self.SCHEMA)
 		if 'approvalID' in data:
 			data = next(self._validateThis(data))
-		r = requests.post(url = url, headers=self.HEADER, data = json.dumps(data))
-		if 200 <= r.status_code < 300:
-			return r.json()
-		else:
-			try:
-				self.logger.log("Error", "Error code {}! Validation call for '{}' failed. See details - {}".format(r.status_code, data['_name'], r.json()))
-				print("Error code {}! Validation call for {} failed.".format(r.status_code, data['_name']))
-			except Exception as e:
-				self.logger.log("Error", "Error code {}! Validation call for '{} 'failed. {} ERROR on args {}. See details - {}".format(r.status_code, data['_name'],type(e), e.args, r.json()))
-		return None
+			
+		try:
+			r = requests.post(url = url, headers=self.HEADER, data = json.dumps(data))
+			if 200 <= r.status_code < 300:
+				return r.json()
+			else:
+				try:
+					self.logger.log("Error", "Error code {}! Validation call for '{}' failed. See details - {}".format(r.status_code, data['_name'], r.json()))
+					print("Error code {}! Validation call for {} failed.".format(r.status_code, data['_name']))
+				except Exception as e:
+					self.logger.log("Error", "Error code {}! Validation call for '{} 'failed. {} ERROR on args {}. See details - {}".format(r.status_code, data['_name'],type(e), e.args, r.text))
+				return None
+		except Exception as e:
+			self.logger.log("Error", "POST request for {} at '{}' failed. {} ERROR on args {}.".format(data['_name'], url, type(e), e.args))
+			return None
+		
 
 	def upload(self, data):
 		self._validateSchema()
 		self._validateAuth()
 		url = self.MY_URL + "/{}".format(self.SCHEMA)
-		r = requests.post(url = url, headers = self.HEADER, data = json.dumps(data))
-		if 200 <= r.status_code < 300:
-			self.logger.log("Msg", "Upload success ({})!".format(data['_name']))
-			print("Upload success ({})!".format(data['_name']))
-		else:
-			try:
-				self.logger.log("Error", "Error code {}! Upload call for '{}' failed. See details - {}".format(r.status_code, data['_name'], r.json()))
+		try:
+			r = requests.post(url = url, headers = self.HEADER, data = json.dumps(data))
+			if 200 <= r.status_code < 300:
+				self.logger.log("Msg", "Upload success ({})!".format(data['_name']))
+				print("Upload success ({})!".format(data['_name']))
+			else:
+				self.logger.log("Error", "Error code {}! Upload call for '{}' failed. See details - {}".format(r.status_code, data['_name'], r.text))
 				print("Error code {}! Upload call for '{}' failed.".format(r.status_code, data['_name']))
-			except Exception as e:
-				self.logger.log("Error", "Error code {}! Upload call for '{}' failed. {} ERROR on args {}.".format(r.status_code, data['_name'], type(e), e.args))
-				
+		except Exception as e:
+			self.logger.log("Error", "POST request for {} at '{}' failed. {} ERROR on args {}.".format(data['_name'], url, type(e), e.args))		
 
 	# def update(self, data): # custom_code should be dictionary output of self._buildCode()
 		# self._validateSchema()
@@ -229,6 +242,8 @@ class API():
 		if search_result is not None:
 			full_result = self.getFull(search_result['uuid'])
 			return self.validate(full_result)
+		else:
+			return "Search failed on {}".format(term)
 
 	def uploadOnSearch(self, term):
 		if type(term) == tuple:
@@ -245,8 +260,9 @@ class API():
 		
 		if search_result is not None:
 			full_result = self.getFull(search_result['uuid'])
-			val_result = self.validate(full_result) # Not sure if necessary. May be duplicated action if SRS is already validating on the backend.
-			if val_result is not None and val_result['valid'] is True:
+			# val_result = self.validate(full_result) # Not sure if necessary. May be duplicated action if SRS is already validating on the backend.
+			# if val_result is not None:
+			if full_result is not None:
 				if custom_code is not None:
 					code_data = self._buildCode(
 						code_id = custom_code,
@@ -264,26 +280,29 @@ class API():
 				try:
 					del full_result['approvalID']
 					self.upload(full_result)
+				except:
+					pass
+				try:
 					self.approve(full_result['uuid'])
+				except:
+					pass
 					
-				except Exception as e:
-					self.logger.log("Error", "Failed to build data for '{}'. {} ERROR on args {}".format(term, type(e), e.args))
-
-			else:
-				self.logger.log("Error", "Data validation error on uploading '{}'.".format(term))
-				print("Data validation error on uploading '{}'.".format(term))
 				
-	def bulkAction(self, action, bulkdata, multithread=False):
+			else:
+				self.logger.log("Error", "Error retrieving full data for '{}'.".format(term))
+				print("Error retrieving full data for '{}'.".format(term))
+		else:
+			self.logger.log("Error", "Error retrieving data for '{}'.".format(term))
+			print("Error retrieving data for '{}'.".format(term))
+		
+	def bulkAction(self, action, bulkdata, workers = 25):
 	## bulkdata should be a list composed of just string values or tuples
 	## if it is tuples, the format should be (term, code, code_system)
-	## e.g. format [('term_1', 'Code_ID1', 'Code_System'), ('term_2', 'Code_ID2', 'Code_System'), ..]
-		global counter
-		counter = 0
-		
+	## e.g. In the case of NHPID data, the format is [('ingredient term', 'nid', 'NHPID'), ( , , ), ..]
+
 		if action == "upload":
 			operation = self.upload
 			valid_action = True
-			
 		elif action == "upload_on_search":
 			operation = self.uploadOnSearch
 			valid_action = True
@@ -293,20 +312,11 @@ class API():
 		if valid_action is True:
 			if self.USERNAME is None or self.PASSWORD is None:
 				self.authenticate()
-			if multithread is True:
-				print("Executing {} jobs in multithread".format(len(bulkdata)))
-				self.logger.log("Msg", "Executing {} jobs in multithread".format(len(bulkdata)))
-
-				with multiprocessing.Pool(25) as p:
-					p.map(operation, bulkdata)
-				print("Completed {} jobs".format(len(bulkdata)))
-				self.logger.log("Msg", "Completed {} jobs".format(len(bulkdata)))
-
-			else:
-				print("Executing {} jobs in singlethread".format(len(bulkdata)))
-				self.logger.log("Msg", "Executing {} jobs in singlethread".format(len(bulkdata)))
-				for data in bulkdata:
-					operation(data)
-					counter+=1
-				print("Completed {} of {} jobs".format(counter, len(bulkdata)))
-				self.logger.log("Msg", "Completed {} of {} jobs".format(counter, len(bulkdata)))
+			print("Executing {} jobs with {} workers in multithread".format(len(bulkdata), workers))
+			self.logger.log("Msg", "Executing {} jobs with {} workers in multithread".format(len(bulkdata), workers))
+			with multiprocessing.Pool(workers) as p:
+				p.map(operation, bulkdata)
+			print("Completed {} jobs".format(len(bulkdata)))
+			self.logger.log("Msg", "Completed {} jobs".format(len(bulkdata)))
+		else:
+			print("{} is not a valid action".format(action))
